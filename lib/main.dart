@@ -1,28 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+final appLocaleProvider = Provider((ref) => const Locale('en'));
 
+class App extends ConsumerStatefulWidget {
+  const App({super.key});
+
+  @override
+  ConsumerState<App> createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(),
+      locale: ref.watch(appLocaleProvider),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -38,7 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Text('Flutter Demo Home Page'),
       ),
       body: Center(
         child: Column(
