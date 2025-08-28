@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:launchdarkly_riverpod/generated/localizations.dart';
+import 'package:lokalise_flutter_sdk/lokalise_flutter_sdk.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Lokalise.init(projectId: 'any, not used', sdkToken: 'any, not used');
+
   runApp(ProviderScope(child: const App()));
 }
 
 final supportedLocalesProvider = Provider(
   // TODO feature flag
-  (ref) => [const Locale('en'), const Locale('de')],
+  (ref) => L10nExtension.supportedLocales,
 );
 
 final manualLocaleProvider = StateProvider((ref) => const Locale('en'));
@@ -32,6 +38,8 @@ class _AppState extends ConsumerState<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: const Home(),
+      localizationsDelegates: L10nExtension.localizationsDelegates,
+      supportedLocales: ref.watch(supportedLocalesProvider),
       locale: ref.watch(appLocaleProvider),
     );
   }
@@ -43,15 +51,10 @@ class Home extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // TODO locale based title
-        title: Text('Flutter Demo Home Page'),
-      ),
+      appBar: AppBar(title: Text(L10nExtension.of(context).title)),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+          children: [
             DropdownButton(
               value: ref.watch(appLocaleProvider),
               items: ref

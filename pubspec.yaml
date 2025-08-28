@@ -8,9 +8,13 @@ environment:
   sdk: ^3.9.0
 
 dependencies:
-  flutter_riverpod: any
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: any
+  intl: any
+  lokalise_flutter_sdk: any
 
 dev_dependencies:
   flutter_test:
@@ -18,4 +22,5 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  generate: true
   uses-material-design: true
