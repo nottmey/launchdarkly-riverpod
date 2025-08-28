@@ -2,10 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
-  runApp(const App());
+  runApp(ProviderScope(child: const App()));
 }
 
-final appLocaleProvider = Provider((ref) => const Locale('en'));
+final supportedLocalesProvider = Provider(
+  // TODO feature flag
+  (ref) => [const Locale('en'), const Locale('de')],
+);
+
+final manualLocaleProvider = StateProvider((ref) => const Locale('en'));
+final appLocaleProvider = Provider((ref) {
+  final preferredLocales = [
+    ref.watch(manualLocaleProvider),
+    // TODO system locales
+  ];
+  final supportedLocales = ref.watch(supportedLocalesProvider);
+  return basicLocaleListResolution(preferredLocales, supportedLocales);
+});
 
 class App extends ConsumerStatefulWidget {
   const App({super.key});
@@ -24,41 +37,37 @@ class _AppState extends ConsumerState<App> {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends ConsumerWidget {
   const MyHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() => setState(() => _counter++);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // TODO locale based title
         title: Text('Flutter Demo Home Page'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            DropdownButton(
+              value: ref.watch(appLocaleProvider),
+              items: ref
+                  .watch(supportedLocalesProvider)
+                  .map(
+                    (locale) => DropdownMenuItem(
+                      value: locale,
+                      child: Text(locale.toLanguageTag()),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) =>
+                  ref.read(manualLocaleProvider.notifier).state = value!,
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
