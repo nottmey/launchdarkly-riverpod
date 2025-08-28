@@ -16,14 +16,27 @@ final supportedLocalesProvider = Provider(
   (ref) => L10nExtension.supportedLocales,
 );
 
-final manualLocaleProvider = StateProvider((ref) => const Locale('en'));
+class PlatformLocalesController extends Notifier<List<Locale>>
+    with WidgetsBindingObserver {
+  @override
+  List<Locale> build() => WidgetsBinding.instance.platformDispatcher.locales;
+
+  @override
+  void didChangeLocales(List<Locale>? locales) => state = locales ?? [];
+}
+
+final platformLocalesProvider = NotifierProvider(PlatformLocalesController.new);
+
+final selectedLocaleProvider = StateProvider<Locale?>((ref) => null);
+
 final appLocaleProvider = Provider((ref) {
-  final preferredLocales = [
-    ref.watch(manualLocaleProvider),
-    // TODO system locales
-  ];
-  final supportedLocales = ref.watch(supportedLocalesProvider);
-  return basicLocaleListResolution(preferredLocales, supportedLocales);
+  return basicLocaleListResolution(
+    [
+      ref.watch(selectedLocaleProvider),
+      ...ref.watch(platformLocalesProvider),
+    ].nonNulls.toList(),
+    ref.watch(supportedLocalesProvider),
+  );
 });
 
 class App extends ConsumerStatefulWidget {
@@ -34,6 +47,21 @@ class App extends ConsumerStatefulWidget {
 }
 
 class _AppState extends ConsumerState<App> {
+  late final PlatformLocalesController _preferredLocalesController;
+
+  @override
+  void initState() {
+    super.initState();
+    _preferredLocalesController = ref.read(platformLocalesProvider.notifier);
+    WidgetsBinding.instance.addObserver(_preferredLocalesController);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_preferredLocalesController);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -67,7 +95,7 @@ class Home extends ConsumerWidget {
                   )
                   .toList(),
               onChanged: (value) =>
-                  ref.read(manualLocaleProvider.notifier).state = value!,
+                  ref.read(selectedLocaleProvider.notifier).state = value,
             ),
           ],
         ),
