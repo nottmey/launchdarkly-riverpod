@@ -61,16 +61,19 @@ final jsonFlagProvider = Provider.autoDispose.family<LDValue, String>((
       : ldClient.jsonVariationDetail(flagKey, emptyObject).value;
 });
 
-final supportedLocalesProvider = Provider(
-  (ref) => ref
+final supportedLocalesProvider = Provider((ref) {
+  final supportedLocales = ref
       .watch(jsonFlagProvider('configure-supported-locales'))
       .values
       .map((object) => object.getFor('languageCode').stringValue())
       .where((languageCode) => languageCode.isNotEmpty)
       .map((languageCode) => Locale(languageCode))
       .where((locale) => L10nExtension.supportedLocales.contains(locale))
-      .toList(),
-);
+      .toList();
+  return supportedLocales.isEmpty
+      ? L10nExtension.supportedLocales
+      : supportedLocales;
+});
 
 final fakeAsyncUserIdProvider = FutureProvider((ref) async {
   await Future.delayed(Duration(seconds: 3));
