@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:launchdarkly_flutter_client_sdk/launchdarkly_flutter_client_sdk.dart';
 import 'package:launchdarkly_riverpod/generated/localizations.dart';
 import 'package:lokalise_flutter_sdk/lokalise_flutter_sdk.dart';
 
@@ -8,12 +10,66 @@ void main() async {
 
   await Lokalise.init(projectId: 'any, not used', sdkToken: 'any, not used');
 
-  runApp(ProviderScope(child: const App()));
+  // using empty context, as we don't have user info at app start yet
+  final emptyContext = LDContextBuilder().build();
+  final ldClient = LDClient(
+    LDConfig(
+      '<put-your-sdk-key-here>',
+      AutoEnvAttributes.enabled,
+      logger: LDLogger(level: LDLogLevel.debug),
+      dataSourceConfig: DataSourceConfig(evaluationReasons: kDebugMode),
+    ),
+    emptyContext,
+  );
+  await ldClient.start().timeout(
+    const Duration(seconds: 4),
+    onTimeout: () => false,
+  );
+
+  runApp(
+    ProviderScope(
+      overrides: [ldClientProvider.overrideWithValue(ldClient)],
+      child: const App(),
+    ),
+  );
 }
 
+final emptyObject = LDValue.buildObject().build(); // for fallback
+
+final ldClientProvider = Provider<LDClient>(
+  (ref) => throw UnimplementedError('to be overwritten in ProviderScope'),
+);
+
+final jsonFlagChangesProvider = StreamProvider.family<LDValue, String>((
+  ref,
+  flagKey,
+) {
+  final ldClient = ref.watch(ldClientProvider);
+  return ldClient.flagChanges
+      .where((event) => event.keys.contains(flagKey))
+      .map((_) => ldClient.jsonVariationDetail(flagKey, emptyObject).value);
+});
+
+final jsonFlagProvider = Provider.autoDispose.family<LDValue, String>((
+  ref,
+  flagKey,
+) {
+  final ldClient = ref.watch(ldClientProvider);
+  final change = ref.watch(jsonFlagChangesProvider(flagKey));
+  return change.hasValue
+      ? change.requireValue
+      : ldClient.jsonVariationDetail(flagKey, emptyObject).value;
+});
+
 final supportedLocalesProvider = Provider(
-  // TODO feature flag
-  (ref) => L10nExtension.supportedLocales,
+  (ref) => ref
+      .watch(jsonFlagProvider('configure-supported-locales'))
+      .values
+      .map((object) => object.getFor('languageCode').stringValue())
+      .where((languageCode) => languageCode.isNotEmpty)
+      .map((languageCode) => Locale(languageCode))
+      .where((locale) => L10nExtension.supportedLocales.contains(locale))
+      .toList(),
 );
 
 class PlatformLocalesController extends Notifier<List<Locale>>

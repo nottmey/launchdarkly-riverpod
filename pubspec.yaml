@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   flutter_riverpod: any
   intl: any
+  launchdarkly_flutter_client_sdk: 4.11.1
   lokalise_flutter_sdk: any
 
 dev_dependencies:
