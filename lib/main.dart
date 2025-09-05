@@ -72,6 +72,30 @@ final supportedLocalesProvider = Provider(
       .toList(),
 );
 
+final fakeAsyncUserIdProvider = FutureProvider((ref) async {
+  await Future.delayed(Duration(seconds: 3));
+  return 'fake-user-id';
+});
+
+final contextProvider = Provider.autoDispose((ref) {
+  final builder = LDContextBuilder();
+
+  final userId = ref.watch(fakeAsyncUserIdProvider).valueOrNull;
+  if (userId != null) {
+    final appLocale = ref.watch(appLocaleProvider);
+
+    builder.kind('user', userId).setString('language', appLocale.languageCode);
+  }
+
+  return builder.build();
+});
+
+final contextIdentificationResultProvider = FutureProvider.autoDispose((ref) {
+  final ldClient = ref.watch(ldClientProvider);
+  final context = ref.watch(contextProvider);
+  return ldClient.identify(context);
+});
+
 class PlatformLocalesController extends Notifier<List<Locale>>
     with WidgetsBindingObserver {
   @override
@@ -110,6 +134,14 @@ class _AppState extends ConsumerState<App> {
     super.initState();
     _preferredLocalesController = ref.read(platformLocalesProvider.notifier);
     WidgetsBinding.instance.addObserver(_preferredLocalesController);
+
+    // starting the context identification and keeping it alive
+    ref.listenManual(
+      contextIdentificationResultProvider,
+      (_, asyncIdentificationResult) =>
+          debugPrint('$asyncIdentificationResult'),
+      fireImmediately: true,
+    );
   }
 
   @override
