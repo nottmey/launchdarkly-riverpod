@@ -11,7 +11,7 @@ void main() async {
   await Lokalise.init(projectId: 'any, not used', sdkToken: 'any, not used');
 
   // using empty context, as we don't have user info at app start yet
-  final emptyContext = LDContextBuilder().build();
+  final emptyContext = LDContextBuilder().kind('user', null).build();
   final ldClient = LDClient(
     LDConfig(
       '<put-your-sdk-key-here>',
@@ -81,16 +81,15 @@ final fakeAsyncUserIdProvider = FutureProvider((ref) async {
 });
 
 final contextProvider = Provider.autoDispose((ref) {
-  final builder = LDContextBuilder();
-
+  // doesn't matter that this can be null, launchdarkly handles that
   final userId = ref.watch(fakeAsyncUserIdProvider).valueOrNull;
-  if (userId != null) {
-    final appLocale = ref.watch(appLocaleProvider);
+  final appLocale = ref.watch(appLocaleProvider);
 
-    builder.kind('user', userId).setString('language', appLocale.languageCode);
-  }
+  LDContextBuilder()
+      .kind('user', userId)
+      .setString('language', appLocale.languageCode);
 
-  return builder.build();
+  return LDContextBuilder().build();
 });
 
 final contextIdentificationResultProvider = FutureProvider.autoDispose((ref) {
