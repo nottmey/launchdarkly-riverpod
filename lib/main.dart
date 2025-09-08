@@ -11,7 +11,7 @@ void main() async {
   await Lokalise.init(projectId: 'any, not used', sdkToken: 'any, not used');
 
   // using empty context, as we don't have user info at app start yet
-  final emptyContext = LDContextBuilder().build();
+  final emptyContext = LDContextBuilder().kind('user').anonymous(true).build();
   final ldClient = LDClient(
     LDConfig(
       '<put-your-sdk-key-here>',
@@ -84,10 +84,15 @@ final contextProvider = Provider.autoDispose((ref) {
   final builder = LDContextBuilder();
 
   final userId = ref.watch(fakeAsyncUserIdProvider).valueOrNull;
-  if (userId != null) {
-    final appLocale = ref.watch(appLocaleProvider);
+  final appLocale = ref.watch(appLocaleProvider);
 
+  if (userId != null) {
     builder.kind('user', userId).setString('language', appLocale.languageCode);
+  } else {
+    builder
+        .kind('user')
+        .anonymous(true)
+        .setString('language', appLocale.languageCode);
   }
 
   return builder.build();
