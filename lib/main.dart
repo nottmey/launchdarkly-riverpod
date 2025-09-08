@@ -11,7 +11,7 @@ void main() async {
   await Lokalise.init(projectId: 'any, not used', sdkToken: 'any, not used');
 
   // using empty context, as we don't have user info at app start yet
-  final emptyContext = LDContextBuilder().kind('user', null).build();
+  final emptyContext = LDContextBuilder().kind('user').anonymous(true).build();
   final ldClient = LDClient(
     LDConfig(
       '<put-your-sdk-key-here>',
@@ -37,28 +37,29 @@ void main() async {
 final emptyObject = LDValue.buildObject().build(); // for fallback
 
 final ldClientProvider = Provider<LDClient>(
-  (ref) => throw UnimplementedError('to be overwritten in ProviderScope'),
+      (ref) => throw UnimplementedError('to be overwritten in ProviderScope'),
 );
 
-final jsonFlagChangesProvider = StreamProvider.family<LDValue, String>((
-  ref,
-  flagKey,
-) {
+final jsonFlagChangesProvider = StreamProvider.family<LDValue, String>((ref,
+    flagKey,) {
   final ldClient = ref.watch(ldClientProvider);
   return ldClient.flagChanges
       .where((event) => event.keys.contains(flagKey))
-      .map((_) => ldClient.jsonVariationDetail(flagKey, emptyObject).value);
+      .map((_) =>
+  ldClient
+      .jsonVariationDetail(flagKey, emptyObject)
+      .value);
 });
 
-final jsonFlagProvider = Provider.autoDispose.family<LDValue, String>((
-  ref,
-  flagKey,
-) {
+final jsonFlagProvider = Provider.autoDispose.family<LDValue, String>((ref,
+    flagKey,) {
   final ldClient = ref.watch(ldClientProvider);
   final change = ref.watch(jsonFlagChangesProvider(flagKey));
   return change.hasValue
       ? change.requireValue
-      : ldClient.jsonVariationDetail(flagKey, emptyObject).value;
+      : ldClient
+      .jsonVariationDetail(flagKey, emptyObject)
+      .value;
 });
 
 final supportedLocalesProvider = Provider((ref) {
@@ -81,15 +82,26 @@ final fakeAsyncUserIdProvider = FutureProvider((ref) async {
 });
 
 final contextProvider = Provider.autoDispose((ref) {
+  final builder = LDContextBuilder();
+
   // doesn't matter that this can be null, launchdarkly handles that
-  final userId = ref.watch(fakeAsyncUserIdProvider).valueOrNull;
+  final userId = ref
+      .watch(fakeAsyncUserIdProvider)
+      .valueOrNull;
   final appLocale = ref.watch(appLocaleProvider);
 
-  LDContextBuilder()
-      .kind('user', userId)
-      .setString('language', appLocale.languageCode);
+  if (userId != null) {
+    builder
+        .kind('user', userId)
+        .setString('language', appLocale.languageCode)
+  } else {
+    builder
+        .kind('user')
+        .anonymous(true)
+        .setString('language', appLocale.languageCode);
+  }
 
-  return LDContextBuilder().build();
+  return builder.build();
 });
 
 final contextIdentificationResultProvider = FutureProvider.autoDispose((ref) {
@@ -140,7 +152,7 @@ class _AppState extends ConsumerState<App> {
     // starting the context identification and keeping it alive
     ref.listenManual(
       contextIdentificationResultProvider,
-      (_, asyncIdentificationResult) =>
+          (_, asyncIdentificationResult) =>
           debugPrint('$asyncIdentificationResult'),
       fireImmediately: true,
     );
@@ -169,7 +181,9 @@ class Home extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: Text(L10nExtension.of(context).title)),
+      appBar: AppBar(title: Text(L10nExtension
+          .of(context)
+          .title)),
       body: Center(
         child: Column(
           children: [
@@ -178,14 +192,17 @@ class Home extends ConsumerWidget {
               items: ref
                   .watch(supportedLocalesProvider)
                   .map(
-                    (locale) => DropdownMenuItem(
+                    (locale) =>
+                    DropdownMenuItem(
                       value: locale,
                       child: Text(locale.toLanguageTag()),
                     ),
-                  )
+              )
                   .toList(),
               onChanged: (value) =>
-                  ref.read(selectedLocaleProvider.notifier).state = value,
+              ref
+                  .read(selectedLocaleProvider.notifier)
+                  .state = value,
             ),
           ],
         ),
