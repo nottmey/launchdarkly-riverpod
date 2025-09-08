@@ -83,7 +83,6 @@ final fakeAsyncUserIdProvider = FutureProvider((ref) async {
 final contextProvider = Provider.autoDispose((ref) {
   final builder = LDContextBuilder();
 
-  // doesn't matter that this can be null, launchdarkly handles that
   final userId = ref.watch(fakeAsyncUserIdProvider).valueOrNull;
   final appLocale = ref.watch(appLocaleProvider);
 
